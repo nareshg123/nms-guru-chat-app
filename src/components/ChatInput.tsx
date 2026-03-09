@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useChat } from "@/contexts/ChatContext";
 import { Send, ImagePlus, Paperclip, ChevronDown, X, Mic } from "lucide-react";
 
-const MODELS = ["Gemini 2.0 Flash", "Gemini 2.0 Pro", "Gemini 1.5 Pro"];
+const MODELS = ["Guru 2.0 Flash", "Guru 2.0 Pro", "Guru 1.5 Pro"];
 
 const ChatInput = () => {
   const { addMessage, activeChat, createNewChat, selectedModel, setSelectedModel } = useChat();
@@ -141,7 +141,7 @@ const ChatInput = () => {
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Gemini..."
+            placeholder="Ask Guru..."
             rows={1}
             className="flex-1 bg-transparent border-none outline-none resize-none text-foreground placeholder:text-muted-foreground text-sm leading-relaxed max-h-[200px]"
           />
@@ -180,7 +180,7 @@ const ChatInput = () => {
       </div>
 
       <p className="text-center text-xs text-muted-foreground mt-2">
-        Gemini may display inaccurate info, including about people, so double-check its responses.
+        Guru may display inaccurate info, including about people, so double-check its responses.
       </p>
     </div>
   );
