@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        display: ['Google Sans', 'Inter', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -46,6 +50,16 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        gemini: {
+          surface: "hsl(var(--gemini-surface))",
+          "surface-variant": "hsl(var(--gemini-surface-variant))",
+          sidebar: "hsl(var(--gemini-sidebar))",
+          "sidebar-hover": "hsl(var(--gemini-sidebar-hover))",
+          "chat-bg": "hsl(var(--gemini-chat-bg))",
+          "input-bg": "hsl(var(--gemini-input-bg))",
+          "user-bubble": "hsl(var(--gemini-user-bubble))",
+          "ai-bubble": "hsl(var(--gemini-ai-bubble))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
