@@ -35,14 +35,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, _password: string) => {
     const u = { email, name: email.split("@")[0] };
     setUser(u);
-    localStorage.setItem("gemini_user", JSON.stringify(u));
+    localStorage.setItem("guru_user", JSON.stringify(u));
     return true;
   };
 
   const signup = async (name: string, email: string, _password: string) => {
     const u = { email, name };
     setUser(u);
-    localStorage.setItem("gemini_user", JSON.stringify(u));
+    localStorage.setItem("guru_user", JSON.stringify(u));
     return true;
   };
 
