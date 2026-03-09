@@ -141,7 +141,7 @@ const ChatInput = () => {
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Gemini..."
+            placeholder="Ask Guru..."
             rows={1}
             className="flex-1 bg-transparent border-none outline-none resize-none text-foreground placeholder:text-muted-foreground text-sm leading-relaxed max-h-[200px]"
           />
