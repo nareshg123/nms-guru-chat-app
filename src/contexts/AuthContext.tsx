@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem("gemini_user");
+    const stored = localStorage.getItem("guru_user");
     if (stored) setUser(JSON.parse(stored));
     setIsLoading(false);
   }, []);
