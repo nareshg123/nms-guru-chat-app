@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useChat } from "@/contexts/ChatContext";
 import { Send, ImagePlus, Paperclip, ChevronDown, X, Mic } from "lucide-react";
 
-const MODELS = ["Gemini 2.0 Flash", "Gemini 2.0 Pro", "Gemini 1.5 Pro"];
+const MODELS = ["Guru 2.0 Flash", "Guru 2.0 Pro", "Guru 1.5 Pro"];
 
 const ChatInput = () => {
   const { addMessage, activeChat, createNewChat, selectedModel, setSelectedModel } = useChat();
