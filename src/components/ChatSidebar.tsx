@@ -26,7 +26,7 @@ const ChatSidebar = ({ onOpenSettings }: ChatSidebarProps) => {
             <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
           {!collapsed && (
-            <span className="font-display font-semibold text-foreground truncate">Gemini</span>
+            <span className="font-display font-semibold text-foreground truncate">Guru</span>
           )}
         </div>
         <button

@@ -36,7 +36,7 @@ export const useChat = () => {
   return ctx;
 };
 
-const MODELS = ["Gemini 2.0 Flash", "Gemini 2.0 Pro", "Gemini 1.5 Pro"];
+const MODELS = ["Guru 2.0 Flash", "Guru 2.0 Pro", "Guru 1.5 Pro"];
 
 export const ChatProvider = ({ children }: { children: ReactNode }) => {
   const [chats, setChats] = useState<Chat[]>([]);

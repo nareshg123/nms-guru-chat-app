@@ -40,7 +40,7 @@ const LoginPage = () => {
           >
             <Sparkles className="w-8 h-8 text-primary-foreground" />
           </motion.div>
-          <h1 className="text-3xl font-display font-bold gemini-gradient-text mb-2">Gemini</h1>
+          <h1 className="text-3xl font-display font-bold gemini-gradient-text mb-2">Guru</h1>
           <p className="text-muted-foreground">
             {isSignup ? "Create your account" : "Welcome back"}
           </p>

@@ -180,7 +180,7 @@ const ChatInput = () => {
       </div>
 
       <p className="text-center text-xs text-muted-foreground mt-2">
-        Gemini may display inaccurate info, including about people, so double-check its responses.
+        Guru may display inaccurate info, including about people, so double-check its responses.
       </p>
     </div>
   );

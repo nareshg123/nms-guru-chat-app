@@ -45,6 +45,7 @@ const WelcomeScreen = () => {
         <h1 className="text-4xl md:text-5xl font-display font-bold gemini-gradient-text mb-3">
           Hello there
         </h1>
+
         <p className="text-lg text-muted-foreground">
           How can I help you today?
         </p>
