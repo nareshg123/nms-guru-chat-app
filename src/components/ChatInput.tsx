@@ -1,35 +1,68 @@
 import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { useChat } from "@/contexts/ChatContext";
+import { useChat, MODELS } from "@/contexts/ChatContext";
+import { sendChatMessage } from "@/lib/api";
 import { Send, ImagePlus, Paperclip, ChevronDown, X, Mic } from "lucide-react";
-
-const MODELS = ["Gemini 2.0 Flash", "Gemini 2.0 Pro", "Gemini 1.5 Pro", "Nano Banana"];
+import { toast } from "sonner";
 
 const ChatInput = () => {
-  const { addMessage, activeChat, createNewChat, selectedModel, setSelectedModel } = useChat();
+  const {
+    addMessage, activeChat, createNewChat, selectedModel,
+    setSelectedModel, isLoading, setIsLoading, updateLastAssistantMessage,
+  } = useChat();
   const [input, setInput] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [showModelPicker, setShowModelPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const handleSend = () => {
-    if (!input.trim() && images.length === 0) return;
+  const currentModel = MODELS.find((m) => m.id === selectedModel) || MODELS[0];
+
+  const handleSend = async () => {
+    if ((!input.trim() && images.length === 0) || isLoading) return;
     if (!activeChat) createNewChat();
-    // Small delay to ensure chat is created
-    setTimeout(() => {
-      addMessage({ role: "user", content: input.trim(), images });
-      // Simulate AI response
-      setTimeout(() => {
-        addMessage({
-          role: "assistant",
-          content: generateResponse(input.trim()),
-        });
-      }, 800 + Math.random() * 1200);
-      setInput("");
-      setImages([]);
-    }, 50);
+
+    const userContent = input.trim();
+    setInput("");
+    setImages([]);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+    // Wait for chat creation
+    await new Promise((r) => setTimeout(r, 50));
+
+    addMessage({ role: "user", content: userContent, images });
+    addMessage({ role: "assistant", content: "" });
+    setIsLoading(true);
+
+    let accumulated = "";
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const history = activeChat?.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })) || [];
+
+      await sendChatMessage(
+        [...history, { role: "user" as const, content: userContent }],
+        selectedModel,
+        (delta) => {
+          accumulated += delta;
+          updateLastAssistantMessage(accumulated);
+        },
+        () => setIsLoading(false),
+        controller.signal
+      );
+    } catch (err: any) {
+      if (err.name !== "AbortError") {
+        toast.error(err.message || "Failed to get response");
+        updateLastAssistantMessage("Sorry, something went wrong. Please try again.");
+      }
+      setIsLoading(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -53,7 +86,6 @@ const ChatInput = () => {
 
   const removeImage = (idx: number) => setImages((prev) => prev.filter((_, i) => i !== idx));
 
-  // Auto-resize textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     const ta = textareaRef.current;
@@ -72,24 +104,25 @@ const ChatInput = () => {
             onClick={() => setShowModelPicker(!showModelPicker)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted hover:bg-secondary text-sm text-foreground transition-colors"
           >
-            <span className="font-medium">{selectedModel}</span>
+            <span className="font-medium">{currentModel.label}</span>
             <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           {showModelPicker && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-card border border-border rounded-xl shadow-lg overflow-hidden min-w-[200px] z-10"
+              className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-card border border-border rounded-xl shadow-lg overflow-hidden min-w-[220px] z-10"
             >
               {MODELS.map((m) => (
                 <button
-                  key={m}
-                  onClick={() => { setSelectedModel(m); setShowModelPicker(false); }}
-                  className={`block w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors ${
-                    m === selectedModel ? "text-primary font-medium bg-accent" : "text-foreground"
+                  key={m.id}
+                  onClick={() => { setSelectedModel(m.id); setShowModelPicker(false); }}
+                  className={`flex items-center justify-between w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors ${
+                    m.id === selectedModel ? "text-primary font-medium bg-accent" : "text-foreground"
                   }`}
                 >
-                  {m}
+                  <span>{m.label}</span>
+                  <span className="text-xs text-muted-foreground capitalize">{m.provider}</span>
                 </button>
               ))}
             </motion.div>
@@ -99,7 +132,6 @@ const ChatInput = () => {
 
       {/* Input Area */}
       <div className="gemini-input-bg rounded-2xl border border-border shadow-sm">
-        {/* Image previews */}
         {images.length > 0 && (
           <div className="flex gap-2 p-3 pb-0 flex-wrap">
             {images.map((img, idx) => (
@@ -117,7 +149,6 @@ const ChatInput = () => {
         )}
 
         <div className="flex items-end gap-2 p-3">
-          {/* Upload buttons */}
           <div className="flex items-center gap-1 pb-0.5">
             <button
               onClick={() => imageInputRef.current?.click()}
@@ -135,7 +166,6 @@ const ChatInput = () => {
             </button>
           </div>
 
-          {/* Textarea */}
           <textarea
             ref={textareaRef}
             value={input}
@@ -146,14 +176,13 @@ const ChatInput = () => {
             className="flex-1 bg-transparent border-none outline-none resize-none text-foreground placeholder:text-muted-foreground text-sm leading-relaxed max-h-[200px]"
           />
 
-          {/* Actions */}
           <div className="flex items-center gap-1 pb-0.5">
             <button className="w-9 h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
               <Mic className="w-5 h-5" />
             </button>
             <button
               onClick={handleSend}
-              disabled={!input.trim() && images.length === 0}
+              disabled={(!input.trim() && images.length === 0) || isLoading}
               className="w-9 h-9 rounded-lg flex items-center justify-center gemini-gradient-bg text-primary-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
             >
               <Send className="w-4 h-4" />
@@ -161,38 +190,15 @@ const ChatInput = () => {
           </div>
         </div>
 
-        {/* Hidden file inputs */}
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={handleImageUpload}
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={handleImageUpload}
-        />
+        <input ref={imageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
+        <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleImageUpload} />
       </div>
 
       <p className="text-center text-xs text-muted-foreground mt-2">
-        Guru may display inaccurate info, including about people, so double-check its responses.
+        Guru may display inaccurate info, so double-check its responses.
       </p>
     </div>
   );
 };
-
-function generateResponse(input: string): string {
-  const responses = [
-    `That's an interesting question! Here's what I think about "${input.slice(0, 30)}...":\n\nBased on my analysis, there are several key points to consider. First, the context matters significantly. Second, there are multiple perspectives worth exploring.\n\nWould you like me to go deeper into any particular aspect?`,
-    `Great question! Let me break this down for you:\n\n1. **Understanding the basics**: The core concept revolves around fundamental principles that have been well-established.\n\n2. **Practical applications**: There are numerous real-world applications that demonstrate this effectively.\n\n3. **Future implications**: Looking ahead, we can expect significant developments in this area.\n\nIs there anything specific you'd like to explore further?`,
-    `I'd be happy to help with that! Here's a comprehensive overview:\n\n**Key Insights:**\n- The topic has evolved significantly over recent years\n- Multiple approaches exist, each with their own advantages\n- Best practices suggest a balanced methodology\n\n**Recommendations:**\nI'd suggest starting with the fundamentals and building from there. Would you like more specific guidance?`,
-  ];
-  return responses[Math.floor(Math.random() * responses.length)];
-}
 
 export default ChatInput;
