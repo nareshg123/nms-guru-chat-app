@@ -10,13 +10,6 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading } = useAuth();
-  if (isLoading) return null;
-  if (!user) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-};
-
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
@@ -33,7 +26,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-            <Route path="/" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+            <Route path="/" element={<ChatPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
