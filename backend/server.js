@@ -27,19 +27,36 @@ const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// Create chats table if not exists
-pool.query(`
-  CREATE TABLE IF NOT EXISTS chats (
-    id TEXT PRIMARY KEY,
-    user_email TEXT NOT NULL,
-    title TEXT NOT NULL DEFAULT 'New chat',
-    messages JSONB NOT NULL DEFAULT '[]',
-    model TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-  );
-  CREATE INDEX IF NOT EXISTS idx_chats_user_email ON chats(user_email);
-`).catch(err => console.error("DB init error:", err));
+let dbInitialized = false;
+
+async function initDb() {
+  if (dbInitialized) return;
+
+  try {
+    // Attempt a simple connection check first
+    await pool.query('SELECT 1');
+    
+    // Create chats table if not exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chats (
+        id TEXT PRIMARY KEY,
+        user_email TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT 'New chat',
+        messages JSONB NOT NULL DEFAULT '[]',
+        model TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_chats_user_email ON chats(user_email);
+    `);
+    
+    dbInitialized = true;
+    console.log("Database initialized successfully.");
+  } catch (err) {
+    console.error("DB init error:", err);
+    throw new Error("Failed to initialize database connection.");
+  }
+}
 
 // Model to provider mapping
 const MODEL_MAP = {
@@ -58,6 +75,7 @@ const MODEL_MAP = {
 // Save/update a chat
 app.post("/api/chats", async (req, res) => {
   try {
+    await initDb();
     const { chat, userEmail } = req.body;
     if (!chat || !userEmail) return res.status(400).json({ error: "Missing chat or userEmail" });
 
@@ -81,6 +99,7 @@ app.post("/api/chats", async (req, res) => {
 // Get all chats for a user
 app.get("/api/chats", async (req, res) => {
   try {
+    await initDb();
     const { userEmail } = req.query;
     if (!userEmail) return res.status(400).json({ error: "Missing userEmail" });
 
@@ -106,6 +125,7 @@ app.get("/api/chats", async (req, res) => {
 // Delete a chat
 app.delete("/api/chats/:id", async (req, res) => {
   try {
+    await initDb();
     const { userEmail } = req.body;
     await pool.query("DELETE FROM chats WHERE id = $1 AND user_email = $2", [req.params.id, userEmail]);
     res.json({ success: true });
