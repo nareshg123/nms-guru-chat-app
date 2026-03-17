@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { useChat, MODELS } from "@/contexts/ChatContext";
+import { useChat } from "@/contexts/ChatContext";
 import { sendChatMessage } from "@/lib/api";
 import { Send, ImagePlus, Paperclip, ChevronDown, X, Mic } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ const ChatInput = () => {
   const {
     addMessage, activeChat, createNewChat, selectedModel,
     setSelectedModel, isLoading, setIsLoading, updateLastAssistantMessage,
+    availableModels,
   } = useChat();
   const [input, setInput] = useState("");
   const [images, setImages] = useState<string[]>([]);
@@ -18,7 +19,7 @@ const ChatInput = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const currentModel = MODELS.find((m) => m.id === selectedModel) || MODELS[0];
+  const currentModel = availableModels.find((m) => m.id === selectedModel) || availableModels[0];
 
   const handleSend = async () => {
     if ((!input.trim() && images.length === 0) || isLoading) return;
@@ -29,7 +30,6 @@ const ChatInput = () => {
     setImages([]);
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    // Wait for chat creation
     await new Promise((r) => setTimeout(r, 50));
 
     addMessage({ role: "user", content: userContent, images });
@@ -105,15 +105,17 @@ const ChatInput = () => {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted hover:bg-secondary text-sm text-foreground transition-colors"
           >
             <span className="font-medium">{currentModel.label}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            {availableModels.length > 1 && (
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            )}
           </button>
-          {showModelPicker && (
+          {showModelPicker && availableModels.length > 1 && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-card border border-border rounded-xl shadow-lg overflow-hidden min-w-[220px] z-10"
             >
-              {MODELS.map((m) => (
+              {availableModels.map((m) => (
                 <button
                   key={m.id}
                   onClick={() => { setSelectedModel(m.id); setShowModelPicker(false); }}

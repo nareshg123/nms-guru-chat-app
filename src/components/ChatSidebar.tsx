@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useChat } from "@/contexts/ChatContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import {
-  Plus, MessageSquare, Trash2, Settings, LogOut, ChevronLeft, ChevronRight,
+  Plus, MessageSquare, Trash2, Settings, LogOut, LogIn, ChevronLeft, ChevronRight,
   Sparkles, Menu, X
 } from "lucide-react";
 
@@ -14,6 +15,7 @@ interface ChatSidebarProps {
 const ChatSidebar = ({ onOpenSettings }: ChatSidebarProps) => {
   const { chats, activeChat, createNewChat, setActiveChat, deleteChat } = useChat();
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -98,23 +100,36 @@ const ChatSidebar = ({ onOpenSettings }: ChatSidebarProps) => {
           <Settings className="w-4 h-4 shrink-0" />
           {!collapsed && <span className="text-sm">Settings</span>}
         </button>
-        <button
-          onClick={logout}
-          className={`flex items-center gap-2 w-full rounded-lg hover:bg-muted transition-colors text-foreground ${collapsed ? "justify-center p-2" : "px-3 py-2"}`}
-        >
-          <LogOut className="w-4 h-4 shrink-0" />
-          {!collapsed && <span className="text-sm">Log out</span>}
-        </button>
-        {!collapsed && user && (
-          <div className="flex items-center gap-2 px-3 py-2">
-            <div className="w-7 h-7 rounded-full gemini-gradient-bg flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
-              {user.name[0].toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-            </div>
-          </div>
+
+        {user ? (
+          <>
+            <button
+              onClick={logout}
+              className={`flex items-center gap-2 w-full rounded-lg hover:bg-muted transition-colors text-foreground ${collapsed ? "justify-center p-2" : "px-3 py-2"}`}
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              {!collapsed && <span className="text-sm">Log out</span>}
+            </button>
+            {!collapsed && (
+              <div className="flex items-center gap-2 px-3 py-2">
+                <div className="w-7 h-7 rounded-full gemini-gradient-bg flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
+                  {user.name[0].toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <button
+            onClick={() => navigate("/login")}
+            className={`flex items-center gap-2 w-full rounded-lg hover:bg-muted transition-colors text-primary ${collapsed ? "justify-center p-2" : "px-3 py-2"}`}
+          >
+            <LogIn className="w-4 h-4 shrink-0" />
+            {!collapsed && <span className="text-sm font-medium">Sign in for all models</span>}
+          </button>
         )}
       </div>
     </div>
