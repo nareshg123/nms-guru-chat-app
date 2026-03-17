@@ -16,7 +16,9 @@ app.use(cors({
 }));
 app.options("*", cors());
 app.use(express.json({ limit: "10mb" }));
-
+app.get('/', (req, res) => {
+  res.json({ message: 'Hello' }); // Sends JSON with correct Content-Type
+});
 // Initialize AI clients
 const googleAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
