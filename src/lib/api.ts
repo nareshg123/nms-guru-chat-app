@@ -13,7 +13,7 @@ export async function sendChatMessage(
   onDone: () => void,
   signal?: AbortSignal
 ) {
-  const resp = await fetch(`${API_BASE}/chat`, {
+  const resp = await fetch(`${API_BASE}/chats`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages, model }),
