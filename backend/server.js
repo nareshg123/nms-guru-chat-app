@@ -16,9 +16,7 @@ app.use(cors({
 }));
 app.options("*", cors());
 app.use(express.json({ limit: "10mb" }));
-app.get('/', (req, res) => {
-  res.json({ message: 'Hello' }); // Sends JSON with correct Content-Type
-});
+
 // Initialize AI clients
 const googleAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -37,7 +35,7 @@ async function initDb() {
   try {
     // Attempt a simple connection check first
     await pool.query('SELECT 1');
-    
+
     // Create chats table if not exists
     await pool.query(`
       CREATE TABLE IF NOT EXISTS chats (
@@ -51,7 +49,7 @@ async function initDb() {
       );
       CREATE INDEX IF NOT EXISTS idx_chats_user_email ON chats(user_email);
     `);
-    
+
     dbInitialized = true;
     console.log("Database initialized successfully.");
   } catch (err) {
@@ -61,16 +59,16 @@ async function initDb() {
 }
 
 // Model to provider mapping
-const MODEL_MAP = {
-  "gemini-2.0-flash": { provider: "google", model: "gemini-2.0-flash" },
-  "gemini-2.0-pro": { provider: "google", model: "gemini-2.0-pro" },
-  "gemini-1.5-pro": { provider: "google", model: "gemini-1.5-pro" },
-  "nano-banana": { provider: "google", model: "gemini-2.0-flash" },
-  "gpt-4o": { provider: "openai", model: "gpt-4o" },
-  "gpt-4o-mini": { provider: "openai", model: "gpt-4o-mini" },
-  "claude-sonnet-4-20250514": { provider: "anthropic", model: "claude-sonnet-4-20250514" },
-  "claude-3-5-haiku-20241022": { provider: "anthropic", model: "claude-3-5-haiku-20241022" },
-};
+let MODEL_MAP = {};
+if (process.env.MODEL_MAP) {
+  try {
+    MODEL_MAP = JSON.parse(process.env.MODEL_MAP);
+  } catch (err) {
+    console.error("Failed to parse MODEL_MAP from environment variables:", err.message);
+  }
+} else {
+  console.warn("MODEL_MAP is not defined in environment variables");
+}
 
 // ===== CHAT ENDPOINTS =====
 
@@ -97,7 +95,9 @@ app.post("/api/chats", async (req, res) => {
     res.status(500).json({ error: "Failed to save chat" });
   }
 });
-
+app.get('/', (req, res) => {
+  res.json({ message: 'Hello' }); // Sends JSON with correct Content-Type
+});
 // Get all chats for a user
 app.get("/api/chats", async (req, res) => {
   try {
@@ -164,66 +164,111 @@ app.post("/api/chat", async (req, res) => {
 });
 
 async function streamGoogle(model, messages, res) {
-  const contents = messages.map((m) => ({
-    role: m.role === "assistant" ? "model" : "user",
-    parts: [{ text: m.content }],
-  }));
+  try {
+    const contents = messages.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
 
-  const stream = await googleAI.models.generateContentStream({
-    model,
-    contents,
-  });
+    const stream = await googleAI.models.generateContentStream({
+      model,
+      contents,
+    });
 
-  for await (const chunk of stream) {
-    const text = chunk.text;
-    if (text) {
-      const data = JSON.stringify({ choices: [{ delta: { content: text } }] });
-      res.write(`data: ${data}\n\n`);
+    for await (const chunk of stream) {
+      const text = chunk.text;
+      if (text) {
+        const data = JSON.stringify({ choices: [{ delta: { content: text } }] });
+        res.write(`data: ${data}\n\n`);
+      }
     }
+    res.write("data: [DONE]\n\n");
+  } catch (err) {
+    console.error("Google AI Stream Error:", err);
+    let errorMessage = "An error occurred with the AI provider.";
+    if (err.status === "PERMISSION_DENIED" || (err.message && err.message.includes("API key"))) {
+      errorMessage = "API Key Error: " + (err.message || "Your API key may be invalid or leaked. Please update it.");
+    }
+    const data = JSON.stringify({ choices: [{ delta: { content: `\n\n**Error**: ${errorMessage}` } }] });
+    res.write(`data: ${data}\n\n`);
+    res.write("data: [DONE]\n\n");
+  } finally {
+    res.end();
   }
-  res.write("data: [DONE]\n\n");
-  res.end();
 }
 
 async function streamOpenAI(model, messages, res) {
-  const stream = await openai.chat.completions.create({
-    model,
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
-    stream: true,
-  });
+  try {
+    const stream = await openai.chat.completions.create({
+      model,
+      messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      stream: true,
+    });
 
-  for await (const chunk of stream) {
-    const content = chunk.choices[0]?.delta?.content;
-    if (content) {
-      const data = JSON.stringify({ choices: [{ delta: { content } }] });
-      res.write(`data: ${data}\n\n`);
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) {
+        const data = JSON.stringify({ choices: [{ delta: { content } }] });
+        res.write(`data: ${data}\n\n`);
+      }
     }
+    res.write("data: [DONE]\n\n");
+  } catch (err) {
+    console.error("OpenAI Stream Error:", err);
+    let errorMessage = "An error occurred with the AI provider.";
+    if (err.status === 401 || err.status === 403 || (err.message && err.message.includes("API key"))) {
+      errorMessage = "API Key Error: " + (err.message || "Your API key may be invalid or leaked. Please update it.");
+    } else if (err.error && err.error.message) {
+      try {
+        const parsed = JSON.parse(err.error.message);
+        if (parsed.error && parsed.error.message) {
+          errorMessage = parsed.error.message;
+        }
+      } catch (e) {
+        errorMessage = err.error.message;
+      }
+    }
+    const data = JSON.stringify({ choices: [{ delta: { content: `\n\n**Error**: ${errorMessage}` } }] });
+    res.write(`data: ${data}\n\n`);
+    res.write("data: [DONE]\n\n");
+  } finally {
+    res.end();
   }
-  res.write("data: [DONE]\n\n");
-  res.end();
 }
 
 async function streamAnthropic(model, messages, res) {
-  const systemMsg = messages.find((m) => m.role === "system");
-  const chatMessages = messages
-    .filter((m) => m.role !== "system")
-    .map((m) => ({ role: m.role, content: m.content }));
+  try {
+    const systemMsg = messages.find((m) => m.role === "system");
+    const chatMessages = messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({ role: m.role, content: m.content }));
 
-  const stream = anthropic.messages.stream({
-    model,
-    max_tokens: 4096,
-    ...(systemMsg ? { system: systemMsg.content } : {}),
-    messages: chatMessages,
-  });
+    const stream = await anthropic.messages.stream({
+      model,
+      max_tokens: 4096,
+      ...(systemMsg ? { system: systemMsg.content } : {}),
+      messages: chatMessages,
+    });
 
-  for await (const event of stream) {
-    if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-      const data = JSON.stringify({ choices: [{ delta: { content: event.delta.text } }] });
-      res.write(`data: ${data}\n\n`);
+    for await (const event of stream) {
+      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+        const data = JSON.stringify({ choices: [{ delta: { content: event.delta.text } }] });
+        res.write(`data: ${data}\n\n`);
+      }
     }
+    res.write("data: [DONE]\n\n");
+  } catch (err) {
+    console.error("Anthropic Stream Error:", err);
+    let errorMessage = "An error occurred with the AI provider.";
+    if (err.status === 401 || err.status === 403 || (err.message && err.message.includes("API key"))) {
+      errorMessage = "API Key Error: " + (err.message || "Your API key may be invalid or leaked. Please update it.");
+    }
+    const data = JSON.stringify({ choices: [{ delta: { content: `\n\n**Error**: ${errorMessage}` } }] });
+    res.write(`data: ${data}\n\n`);
+    res.write("data: [DONE]\n\n");
+  } finally {
+    res.end();
   }
-  res.write("data: [DONE]\n\n");
-  res.end();
 }
 
 const PORT = process.env.PORT || 5000;
