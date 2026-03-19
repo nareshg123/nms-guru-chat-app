@@ -142,6 +142,7 @@ app.delete("/api/chats/:id", async (req, res) => {
 app.post("/api/chat", async (req, res) => {
   try {
     const { messages, model } = req.body;
+    console.log(req.body);
     const config = MODEL_MAP[model] || MODEL_MAP["gemini-2.0-flash"];
 
     res.setHeader("Content-Type", "text/event-stream");
